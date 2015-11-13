@@ -54,12 +54,17 @@ class ClusterNode
            puts "Invalid IP or Port (given as #{addr}) - use IP:Port format"
            exit 1
         end
+        pwd =nil
+        if s.length==3
+           pwd = s.pop
+        end
         port = s.pop # removes port from split array
         ip = s.join(":") # if s.length > 1 here, it's IPv6, so restore address
         @r = nil
         @info = {}
         @info[:host] = ip
         @info[:port] = port
+        @info[:password] = pwd
         @info[:slots] = {}
         @info[:migrating] = {}
         @info[:importing] = {}
@@ -89,8 +94,13 @@ class ClusterNode
         print "Connecting to node #{self}: "
         STDOUT.flush
         begin
-            @r = Redis.new(:host => @info[:host], :port => @info[:port], :timeout => 60)
-            @r.ping
+            if @info[:password] != nil
+               @r = Redis.new(:host => @info[:host], :port => @info[:port], :timeout => 60,:password=>@info[:password])
+               @r.ping
+	        else
+	           @r = Redis.new(:host => @info[:host], :port => @info[:port], :timeout => 60)
+               @r.ping
+	        end
         rescue
             xputs "[ERR] Sorry, can't connect to node #{self}"
             exit 1 if o[:abort]
@@ -1334,7 +1344,7 @@ end
 #################################################################################
 
 COMMANDS={
-    "create"  => ["create_cluster_cmd", -2, "host1:port1 ... hostN:portN"],
+    "create"  => ["create_cluster_cmd", -2, "host1:port1:<password>  ... hostN:portN:<password>"],
     "check"   => ["check_cluster_cmd", 2, "host:port"],
     "fix"     => ["fix_cluster_cmd", 2, "host:port"],
     "reshard" => ["reshard_cluster_cmd", 2, "host:port"],
